@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { unstable_batchedUpdates } from 'react-dom'
 
 export const createStore = (reducer, initialState = {}) => {
   let state = initialState
@@ -22,8 +23,10 @@ export const createStore = (reducer, initialState = {}) => {
     dispatch(action) {
       state = reducer(state, action)
 
-      listeners.forEach(listener => {
-        listener()
+      unstable_batchedUpdates(() => {
+        listeners.forEach(listener => {
+          listener()
+        })
       })
     },
   }
@@ -50,8 +53,8 @@ export const connect = mapStateToProps => WrappedComponent => props => {
   const mappedState = mapStateToProps(store.getState(), props)
 
   useEffect(() => {
-    // For connected component, have listener just force wrapped component to
-    // re-render with new mapped props after dispatch is called
+    // Have listener just force this connected component to re-render with new
+    // mapped props after dispatch is called
     return store.subscribe(() => {
       forceUpdate(c => c + 1)
     })

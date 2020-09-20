@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react'
+import { unstable_batchedUpdates } from 'react-dom'
 
 import shallowEqual from './shallowEqual'
 
@@ -24,8 +25,10 @@ export const createStore = (reducer, initialState = {}) => {
     dispatch(action) {
       state = reducer(state, action)
 
-      listeners.forEach(listener => {
-        listener()
+      unstable_batchedUpdates(() => {
+        listeners.forEach(listener => {
+          listener()
+        })
       })
     },
   }
@@ -90,11 +93,13 @@ export const connect = mapStateToProps => WrappedComponent => props => {
   propsRef.current = props
 
   useEffect(() => {
+    // If dispatch called, compute next mapped props, and don't force component
+    // to update unless nextMappedProps are different from current mapped props
     return store.subscribe(() => {
       const nextMappedProps = mapStateToProps(store.getState(), propsRef.current)
 
       if (shallowEqual(mappedPropsRef.current, nextMappedProps)) {
-        // Bail out of updates early (don't rerender wrapped component), and
+        // Bail out of updates early (don't rerender this component), and
         // immediately notify descendants of updates
         subStore.notifyUpdates()
         return
@@ -104,13 +109,49 @@ export const connect = mapStateToProps => WrappedComponent => props => {
     })
   }, [store, propsRef, mappedPropsRef, forceUpdate, subStore])
 
+  // If this component is forced to rerender (i.e. because it got new props or
+  // because its mapped props changed), notify its descendants after render is
+  // complete (remember, useEffect runs after rendering)
   useEffect(() => {
     subStore.notifyUpdates()
-  }) // Don't pass dependencies so that it will run after every re-render
+  })
 
   return (
     <Provider store={subStore}>
       <WrappedComponent {...props} {...mappedPropsRef.current} dispatch={store.dispatch} />
     </Provider>
   )
+}
+
+export const useDispatch = () => {
+  const store = useContext(Context)
+  return store.dispatch
+}
+
+export const useSelector = selector => {
+  const store = useContext(Context)
+  const [, forceUpdate] = useState(0)
+  const currentState = useRef()
+  // Try to get the state in the render phase to safely get the latest props
+  currentState.current = selector(store.getState())
+
+  useEffect(() => {
+    return store.subscribe(() => {
+      try {
+        const nextState = selector(store.getState())
+
+        if (currentState.current === nextState) {
+          // Bail out of updates early
+          return
+        }
+      } catch (err) {
+        // Ignore errors
+      }
+
+      // Either way we want to force a re-render
+      forceUpdate(c => c + 1)
+    })
+  }, [store, forceUpdate, selector, currentState])
+
+  return currentState.current
 }

@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { createStore, Provider, connect } from './store_v5'
+import { createStore, Provider, connect, useDispatch, useSelector } from './store_v7'
 
 const reducer = (state, action) => {
   switch (action.type) {
@@ -39,9 +39,28 @@ const store = createStore(reducer, {
   todos: [{ id: 'a', content: 'A' }, { id: 'b', content: 'B' }],
 })
 
+const TodoListWithHooks = () => {
+  const dispatch = useDispatch()
+  const todos = useSelector(state => state.todos)
+  return (
+    <ul>
+      {todos.map(todo => (
+        <Todo
+          key={todo.id}
+          todo={todo}
+          onClick={id => {
+            dispatch({ type: 'DELETE', payload: id })
+          }}
+        />
+      ))}
+    </ul>
+  )
+}
+
 const App = () => (
   <Provider store={store}>
-    <TodoListContainer />
+    {/*<TodoListContainer />*/}
+    <TodoListWithHooks />
   </Provider>
 )
 
