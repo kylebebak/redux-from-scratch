@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { createStore, Provider, connect } from './store'
+import { createStore, Provider, connect } from './store_v5'
 
 const reducer = (state, action) => {
   switch (action.type) {
