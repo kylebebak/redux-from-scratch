@@ -1,26 +1,48 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from 'react'
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+import { createStore, Provider, connect } from './store'
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'DELETE': {
+      return {
+        ...state,
+        todos: state.todos.filter(todo => todo.id !== action.payload),
+      }
+    }
+    default:
+      return state
+  }
 }
 
-export default App;
+const Todo = ({ todo, onClick }) => <li onClick={() => onClick(todo.id)}>{todo.content}</li>
+
+const TodoList = ({ todos, dispatch }) => (
+  <ul>
+    {todos.map(todo => (
+      <Todo
+        key={todo.id}
+        todo={todo}
+        onClick={id => {
+          dispatch({ type: 'DELETE', payload: id })
+        }}
+      />
+    ))}
+  </ul>
+)
+
+const TodoListContainer = connect(state => ({
+  todos: state.todos,
+}))(TodoList)
+
+const store = createStore(reducer, {
+  todos: [{ id: 'a', content: 'A' }, { id: 'b', content: 'B' }],
+})
+
+const App = () => (
+  <Provider store={store}>
+    <TodoListContainer />
+  </Provider>
+)
+
+export default App
